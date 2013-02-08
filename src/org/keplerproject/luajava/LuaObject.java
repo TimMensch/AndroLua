@@ -58,18 +58,9 @@ public class LuaObject
 	protected Integer ref;
 
 	protected LuaState L;
+	static int REGISTRYINDEX = LuaState.LUA_REGISTRYINDEX.intValue();
 
-	protected static Object m_deleteListLock = new Object();
-	class RegisterPair {
-		public RegisterPair(int a_, int b_)
-		{
-			a=a_;
-			b=b_;
-		}
-		int a;
-		int b;
-	};
-	protected static Vector<RegisterPair> m_toDelete = new Vector<RegisterPair>();
+	protected static Vector<Integer> m_toDelete = new Vector<Integer>();
 
 	/**
 	 * Creates a reference to an object in the variable globalName
@@ -86,13 +77,13 @@ public class LuaObject
 			registerValue(-1);
 			L.pop(1);
 
-			synchronized (m_deleteListLock)
+			synchronized (m_toDelete)
 			{
 				if (L.getCPtrPeer() != 0)
 				{
-					for (RegisterPair l : m_toDelete)
+					for (int i : m_toDelete)
 					{
-						L.LunRef(l.a,l.b);
+						L.LunRef(REGISTRYINDEX,i);
 					}
 					m_toDelete.clear();
 				}
@@ -115,7 +106,7 @@ public class LuaObject
 			this.L = parent.getLuaState();
 
 			if (!parent.isTable() && !parent.isUserdata())
-			{				
+			{
 				LuaJavaAPI.throwLuaException(parent.L,"Object parent should be a table or userdata .");
 			}
 
@@ -225,7 +216,7 @@ public class LuaObject
 			ref = new Integer(key);
 		}
 	}
-	
+
 	public int getRef()
 	{
 		return (int)ref;
@@ -235,9 +226,9 @@ public class LuaObject
 	{
 		try
 		{
-			synchronized (m_deleteListLock)
+			synchronized (m_toDelete)
 			{
-				m_toDelete.add(new RegisterPair(LuaState.LUA_REGISTRYINDEX, ref));
+				m_toDelete.add(ref);
 			}
 		}
 		catch (Exception e)
@@ -245,7 +236,7 @@ public class LuaObject
 			System.err.println("Unable to release object " + ref);
 		}
 	}
-	
+
 	public static LuaObject fromReference(LuaState L, int ref) {
 		L.rawGetI(REGISTRYINDEX, ref);
 		LuaObject obj = new LuaObject(L,-1);
@@ -434,11 +425,11 @@ public class LuaObject
 	 * @return Object[] - Returned Objects
 	 * @throws LuaException
 	 */
-	public Object[] call(Object[] args, int nres) throws LuaException 
-	{		
+	public Object[] call(Object[] args, int nres) throws LuaException
+	{
 		return call(args,nres,false);
 	}
-	
+
 	public Object[] call(Object[] args, int nres, boolean trace) throws LuaException
 	{
 		synchronized (L)
