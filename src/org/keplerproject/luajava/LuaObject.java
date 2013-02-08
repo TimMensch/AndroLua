@@ -27,6 +27,7 @@ package org.keplerproject.luajava;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.util.StringTokenizer;
+import java.util.Vector;
 
 /**
  * This class represents a Lua object of any type. A LuaObject is constructed by a {@link LuaState} object using one of
@@ -51,11 +52,24 @@ import java.util.StringTokenizer;
  * @author Rizzato
  * @author Thiago Ponte
  */
+@SuppressWarnings("rawtypes")
 public class LuaObject
 {
 	protected Integer ref;
+
 	protected LuaState L;
-	static int REGISTRYINDEX = LuaState.LUA_REGISTRYINDEX.intValue();
+
+	protected static Object m_deleteListLock = new Object();
+	class RegisterPair {
+		public RegisterPair(int a_, int b_)
+		{
+			a=a_;
+			b=b_;
+		}
+		int a;
+		int b;
+	};
+	protected static Vector<RegisterPair> m_toDelete = new Vector<RegisterPair>();
 
 	/**
 	 * Creates a reference to an object in the variable globalName
@@ -71,6 +85,18 @@ public class LuaObject
 			L.getGlobal(globalName);
 			registerValue(-1);
 			L.pop(1);
+
+			synchronized (m_deleteListLock)
+			{
+				if (L.getCPtrPeer() != 0)
+				{
+					for (RegisterPair l : m_toDelete)
+					{
+						L.LunRef(l.a,l.b);
+					}
+					m_toDelete.clear();
+				}
+			}
 		}
 	}
 
@@ -209,10 +235,9 @@ public class LuaObject
 	{
 		try
 		{
-			synchronized (L)
+			synchronized (m_deleteListLock)
 			{
-				if (L.getCPtrPeer() != 0)
-					L.LunRef(REGISTRYINDEX, ref.intValue());
+				m_toDelete.add(new RegisterPair(LuaState.LUA_REGISTRYINDEX, ref));
 			}
 		}
 		catch (Exception e)
