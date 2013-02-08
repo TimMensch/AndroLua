@@ -54,6 +54,8 @@
 #define LUAJAVASTATEINDEX     "LuaJavaStateIndex"
 /* Index metamethod name */
 #define LUAINDEXMETAMETHODTAG "__index"
+/* Length metamethod name */
+#define LUALENMETAMETHODTAG "__len"
 /* New index metamethod name */
 #define LUANEWINDEXMETAMETHODTAG "__newindex"
 /* Garbage collector metamethod name */
@@ -744,6 +746,27 @@ int classIndex( lua_State * L )
    return ret;
 }
 
+/*  Function: arrayLen */
+int arrayLen( lua_State * L )
+{
+    lua_Number stateIndex;
+    JNIEnv * javaEnv;
+    jobject obj;
+
+    javaEnv = getEnvFromState( L );
+    stateIndex = getLuaStateIndex( L );
+
+    if ( !isJavaObject( L , 1 ) )
+    {
+       lua_pushstring( L , "Not a valid Java Object." );
+       lua_error( L );
+    }
+
+    obj = lua_jobject( L , 1 );
+
+    lua_pushnumber(L,(*javaEnv)->GetArrayLength(javaEnv, obj));
+    return 1;
+}
 
 /***************************************************************************
 *
@@ -1242,6 +1265,11 @@ int pushJavaArray( lua_State * L , jobject javaObject, JNIEnv * javaEnv )
    /* pushes the __index metamethod */
    lua_pushstring( L , LUAINDEXMETAMETHODTAG );
    lua_pushcfunction( L , &arrayIndex );
+   lua_rawset( L , -3 );
+
+   /* pushes the __len metamethod */
+   lua_pushstring( L , LUALENMETAMETHODTAG );
+   lua_pushcfunction( L , &arrayLen );
    lua_rawset( L , -3 );
 
    /* pushes the __fallback metamethod (used for non-integer keys*/
