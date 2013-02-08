@@ -33,6 +33,9 @@
 *
 *****************************************************************************/
 
+// Ignore two warnings that, in this file, are false positives
+#pragma GCC diagnostic ignored "-Wpointer-to-int-cast"
+#pragma GCC diagnostic ignored "-Wint-to-pointer-cast"
 
 #include <stdio.h>
 #include <stdlib.h>
